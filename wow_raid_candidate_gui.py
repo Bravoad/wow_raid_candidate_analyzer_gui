@@ -25,8 +25,10 @@ try:
 except ImportError:  # python-dotenv необязателен, но желателен
     load_dotenv = None
 
+
 if load_dotenv:
     load_dotenv()
+
 
 # ============================================================
 # НАСТРОЙКИ
@@ -55,12 +57,13 @@ class Rules:
     min_weekly_key: int
     raid_difficulty: str
     min_raid_bosses: int
+    check_mplus: bool = True
 
 
 DEFAULT_RULES: dict[str, Rules] = {
     "normal": Rules(
         target="normal",
-        min_ilvl=600,
+        min_ilvl=240,
         min_score=800,
         min_weekly_key=2,
         raid_difficulty="normal",
@@ -68,7 +71,7 @@ DEFAULT_RULES: dict[str, Rules] = {
     ),
     "heroic": Rules(
         target="heroic",
-        min_ilvl=620,
+        min_ilvl=250,
         min_score=1800,
         min_weekly_key=6,
         raid_difficulty="heroic",
@@ -76,7 +79,7 @@ DEFAULT_RULES: dict[str, Rules] = {
     ),
     "mythic": Rules(
         target="mythic",
-        min_ilvl=635,
+        min_ilvl=270,
         min_score=2500,
         min_weekly_key=10,
         raid_difficulty="mythic",
@@ -109,6 +112,7 @@ def safe_float(value: str, default: float) -> float:
     return float(value)
 
 
+
 def safe_int(value: str, default: int) -> int:
     value = value.strip()
     if not value:
@@ -116,8 +120,10 @@ def safe_int(value: str, default: int) -> int:
     return int(value)
 
 
+
 def pretty_json(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2)
+
 
 
 def extract_avatar_url(data: dict[str, Any]) -> str | None:
@@ -132,6 +138,7 @@ def extract_avatar_url(data: dict[str, Any]) -> str | None:
     return None
 
 
+
 def download_image_bytes(url: str) -> bytes:
     response = requests.get(
         url,
@@ -142,8 +149,10 @@ def download_image_bytes(url: str) -> bytes:
     return response.content
 
 
+
 def normalize_region(region: str) -> str:
     return region.strip().lower()
+
 
 
 def normalize_wcl_region(region: str) -> str:
@@ -188,6 +197,7 @@ def fetch_raiderio_character(region: str, realm: str, name: str) -> dict[str, An
     return response.json()
 
 
+
 def extract_ilvl(data: dict[str, Any]) -> float:
     gear = data.get("gear") or {}
     for key in ("item_level_equipped", "item_level_total"):
@@ -195,6 +205,7 @@ def extract_ilvl(data: dict[str, Any]) -> float:
         if isinstance(value, int | float):
             return float(value)
     return 0.0
+
 
 
 def extract_mplus_score(data: dict[str, Any]) -> float:
@@ -214,12 +225,14 @@ def extract_mplus_score(data: dict[str, Any]) -> float:
     return max(clean_scores, default=0.0)
 
 
+
 def extract_run_level(run: dict[str, Any]) -> int:
     for key in ("mythic_level", "keystone_level", "level"):
         value = run.get(key)
         if isinstance(value, int):
             return value
     return 0
+
 
 
 def extract_max_weekly_key(data: dict[str, Any]) -> int:
@@ -229,11 +242,13 @@ def extract_max_weekly_key(data: dict[str, Any]) -> int:
     return max((extract_run_level(run) for run in runs if isinstance(run, dict)), default=0)
 
 
+
 def extract_recent_runs_count(data: dict[str, Any]) -> int:
     runs = data.get("mythic_plus_recent_runs") or []
     if isinstance(runs, list):
         return len(runs)
     return 0
+
 
 
 def parse_summary_progress(summary: str, wanted_difficulty: str) -> int:
@@ -263,6 +278,7 @@ def parse_summary_progress(summary: str, wanted_difficulty: str) -> int:
     return best_kills
 
 
+
 def get_raid_kills_from_raid_info(raid_info: dict[str, Any], wanted_difficulty: str) -> int:
     difficulty_order = {
         "normal": ["normal", "heroic", "mythic"],
@@ -290,6 +306,7 @@ def get_raid_kills_from_raid_info(raid_info: dict[str, Any], wanted_difficulty: 
     return max(best_kills, parse_summary_progress(summary, wanted_difficulty))
 
 
+
 def extract_raid_progress(data: dict[str, Any], wanted_difficulty: str) -> tuple[int, str]:
     progression = data.get("raid_progression") or {}
     if not isinstance(progression, dict) or not progression:
@@ -308,6 +325,7 @@ def extract_raid_progress(data: dict[str, Any], wanted_difficulty: str) -> tuple
             best_raid_name = str(raid_name)
 
     return best_kills, best_raid_name
+
 
 
 def extract_best_runs(data: dict[str, Any], limit: int = 5) -> list[str]:
@@ -336,6 +354,7 @@ def extract_best_runs(data: dict[str, Any], limit: int = 5) -> list[str]:
     return result
 
 
+
 def score_ilvl(ilvl: float, rules: Rules) -> tuple[int, str]:
     if ilvl >= rules.min_ilvl:
         return 35, f"ilvl нормальный: {ilvl:.1f} / нужно {rules.min_ilvl:.1f}"
@@ -346,6 +365,7 @@ def score_ilvl(ilvl: float, rules: Rules) -> tuple[int, str]:
     return 0, f"ilvl слишком низкий: {ilvl:.1f} / нужно {rules.min_ilvl:.1f}"
 
 
+
 def score_mplus(mplus_score: float, rules: Rules) -> tuple[int, str]:
     if mplus_score >= rules.min_score:
         return 25, f"M+ score нормальный: {mplus_score:.0f} / нужно {rules.min_score:.0f}"
@@ -354,6 +374,7 @@ def score_mplus(mplus_score: float, rules: Rules) -> tuple[int, str]:
     if mplus_score >= rules.min_score * 0.6:
         return 10, f"M+ score слабоват: {mplus_score:.0f} / нужно {rules.min_score:.0f}"
     return 0, f"M+ score низкий: {mplus_score:.0f} / нужно {rules.min_score:.0f}"
+
 
 
 def score_raid(raid_kills: int, raid_name: str, rules: Rules) -> tuple[int, str]:
@@ -370,6 +391,7 @@ def score_raid(raid_kills: int, raid_name: str, rules: Rules) -> tuple[int, str]
     return 0, f"рейдового опыта на {rules.raid_difficulty} не найдено"
 
 
+
 def score_weekly_key(max_weekly_key: int, rules: Rules) -> tuple[int, str]:
     if max_weekly_key >= rules.min_weekly_key:
         return 10, f"активность за неделю есть: лучший ключ +{max_weekly_key}"
@@ -378,12 +400,14 @@ def score_weekly_key(max_weekly_key: int, rules: Rules) -> tuple[int, str]:
     return 0, "на этой неделе ключей не найдено"
 
 
+
 def score_recent_activity(recent_runs_count: int) -> tuple[int, str]:
     if recent_runs_count >= 5:
         return 5, f"активный игрок: последних ключей найдено {recent_runs_count}"
     if recent_runs_count > 0:
         return 3, f"активность есть, но небольшая: последних ключей найдено {recent_runs_count}"
     return 0, "последних M+ ключей не найдено"
+
 
 
 def make_raiderio_verdict(total_score: int, ilvl: float, rules: Rules) -> str:
@@ -398,6 +422,7 @@ def make_raiderio_verdict(total_score: int, ilvl: float, rules: Rules) -> str:
     return "ОТКАЗАТЬ"
 
 
+
 def analyze_raiderio_candidate(data: dict[str, Any], rules: Rules) -> dict[str, Any]:
     ilvl = extract_ilvl(data)
     mplus_score = extract_mplus_score(data)
@@ -406,15 +431,25 @@ def analyze_raiderio_candidate(data: dict[str, Any], rules: Rules) -> dict[str, 
     raid_kills, raid_name = extract_raid_progress(data, rules.raid_difficulty)
     best_runs = extract_best_runs(data)
 
-    checks = [
-        score_ilvl(ilvl, rules),
-        score_mplus(mplus_score, rules),
-        score_raid(raid_kills, raid_name, rules),
-        score_weekly_key(max_weekly_key, rules),
-        score_recent_activity(recent_runs_count),
-    ]
+    checks = [score_ilvl(ilvl, rules)]
+    max_possible_score = 35
 
-    total_score = sum(points for points, _reason in checks)
+    if rules.check_mplus:
+        checks.append(score_mplus(mplus_score, rules))
+        max_possible_score += 25
+
+    checks.append(score_raid(raid_kills, raid_name, rules))
+    max_possible_score += 25
+
+    if rules.check_mplus:
+        checks.append(score_weekly_key(max_weekly_key, rules))
+        checks.append(score_recent_activity(recent_runs_count))
+        max_possible_score += 15
+    else:
+        checks.append((0, "проверка Mythic+ прогресса отключена: M+ score, недельный ключ и recent runs не влияют на вердикт"))
+
+    raw_score = sum(points for points, _reason in checks)
+    total_score = round((raw_score / max_possible_score) * 100) if max_possible_score else 0
     verdict = make_raiderio_verdict(total_score, ilvl, rules)
 
     return {
@@ -435,10 +470,14 @@ def analyze_raiderio_candidate(data: dict[str, Any], rules: Rules) -> dict[str, 
         "raid_kills": raid_kills,
         "raid_name": raid_name,
         "total_score": total_score,
+        "raw_score": raw_score,
+        "max_possible_score": max_possible_score,
+        "mplus_check_enabled": rules.check_mplus,
         "verdict": verdict,
         "checks": checks,
         "best_runs": best_runs,
     }
+
 
 
 def format_raiderio_report(report: dict[str, Any], rules: Rules) -> str:
@@ -460,11 +499,18 @@ def format_raiderio_report(report: dict[str, Any], rules: Rules) -> str:
 
     lines.append("")
     lines.append(f"Цель проверки: {rules.target.upper()}")
-    lines.append(
-        f"Требования: ilvl {rules.min_ilvl}, score {rules.min_score}, "
-        f"ключ недели +{rules.min_weekly_key}, рейд {rules.raid_difficulty} "
-        f"{rules.min_raid_bosses}+ босс(ов)"
-    )
+    if rules.check_mplus:
+        lines.append(
+            f"Требования: ilvl {rules.min_ilvl}, score {rules.min_score}, "
+            f"ключ недели +{rules.min_weekly_key}, рейд {rules.raid_difficulty} "
+            f"{rules.min_raid_bosses}+ босс(ов)"
+        )
+    else:
+        lines.append(
+            f"Требования: ilvl {rules.min_ilvl}, рейд {rules.raid_difficulty} "
+            f"{rules.min_raid_bosses}+ босс(ов)"
+        )
+        lines.append("Проверка Mythic+ прогресса: отключена")
     lines.append("")
     lines.append("Оценка:")
 
@@ -473,13 +519,21 @@ def format_raiderio_report(report: dict[str, Any], rules: Rules) -> str:
 
     lines.append("")
     lines.append(f"ИТОГО: {report['total_score']} / 100")
+    if not rules.check_mplus:
+        lines.append(
+            f"Сырой счет без M+: {report.get('raw_score', 0)} / "
+            f"{report.get('max_possible_score', 60)}"
+        )
     lines.append(f"ВЕРДИКТ: {report['verdict']}")
 
-    if report["best_runs"]:
+    if rules.check_mplus and report["best_runs"]:
         lines.append("")
         lines.append("Лучшие M+ ключи:")
         for run in report["best_runs"]:
             lines.append(f"- {run}")
+    elif not rules.check_mplus:
+        lines.append("")
+        lines.append("Лучшие M+ ключи не выводятся, потому что проверка Mythic+ прогресса отключена.")
 
     lines.append("")
     lines.append("Пояснение:")
@@ -709,6 +763,7 @@ query GetCasts(
 """
 
 
+
 def walk_numbers_by_keys(obj: Any, wanted_keys: set[str]) -> list[float]:
     result: list[float] = []
 
@@ -724,6 +779,7 @@ def walk_numbers_by_keys(obj: Any, wanted_keys: set[str]) -> list[float]:
             result.extend(walk_numbers_by_keys(item, wanted_keys))
 
     return result
+
 
 
 def extract_wcl_summary(zone_rankings: Any) -> dict[str, Any]:
@@ -766,6 +822,7 @@ def extract_wcl_summary(zone_rankings: Any) -> dict[str, Any]:
         "logs_count": logs_count,
         "performance_values_found": len(clean_performances),
     }
+
 
 
 def score_wcl(summary: dict[str, Any]) -> tuple[int, list[str]]:
@@ -823,6 +880,7 @@ def score_wcl(summary: dict[str, Any]) -> tuple[int, list[str]]:
     return points, reasons
 
 
+
 def wcl_verdict(points: int) -> str:
     if points >= 70:
         return "СИЛЬНЫЙ КАНДИДАТ ПО ЛОГАМ"
@@ -831,6 +889,7 @@ def wcl_verdict(points: int) -> str:
     if points >= 30:
         return "СОМНИТЕЛЬНО, НУЖНА РУЧНАЯ ПРОВЕРКА"
     return "СЛАБЫЕ ИЛИ ПУСТЫЕ ЛОГИ"
+
 
 
 def analyze_wcl_character(name: str, server_slug: str, region: str) -> str:
@@ -875,12 +934,14 @@ def analyze_wcl_character(name: str, server_slug: str, region: str) -> str:
     return "\n".join(lines)
 
 
+
 def find_player_actor(report: dict[str, Any], player_name: str) -> dict[str, Any] | None:
     actors = report["masterData"]["actors"]
     for actor in actors:
         if actor.get("type") == "Player" and actor.get("name", "").lower() == player_name.lower():
             return actor
     return None
+
 
 
 def select_fight(report: dict[str, Any], fight_id: int | None = None) -> dict[str, Any]:
@@ -899,6 +960,7 @@ def select_fight(report: dict[str, Any], fight_id: int | None = None) -> dict[st
     return boss_fights[-1]
 
 
+
 def summarize_deaths(events_data: list[dict[str, Any]]) -> dict[str, Any]:
     if not events_data:
         return {"death_count": 0, "death_reasons": []}
@@ -910,6 +972,7 @@ def summarize_deaths(events_data: list[dict[str, Any]]) -> dict[str, Any]:
         reasons.append(str(ability_name))
 
     return {"death_count": len(events_data), "death_reasons": reasons}
+
 
 
 def extract_total_from_table(table: Any) -> int:
@@ -927,6 +990,7 @@ def extract_total_from_table(table: Any) -> int:
 
     walk(table)
     return sum(totals)
+
 
 
 def count_casts_from_table(table: Any) -> int:
@@ -947,6 +1011,7 @@ def count_casts_from_table(table: Any) -> int:
     return casts
 
 
+
 def analyze_wcl_report(code: str, player_name: str, fight_id: int | None = None) -> str:
     client = WarcraftLogsClient()
 
@@ -964,8 +1029,8 @@ def analyze_wcl_report(code: str, player_name: str, fight_id: int | None = None)
             if actor.get("type") == "Player"
         )
         return (
-                f"Игрок {player_name} не найден среди участников отчета.\n\n"
-                f"Игроки в логе:\n" + "\n".join(f"- {name}" for name in names if name)
+            f"Игрок {player_name} не найден среди участников отчета.\n\n"
+            f"Игроки в логе:\n" + "\n".join(f"- {name}" for name in names if name)
         )
 
     fight = select_fight(report, fight_id)
@@ -1079,11 +1144,13 @@ class App(tk.Tk):
         self.notebook.pack(fill="both", expand=True)
 
         self.raider_tab = ttk.Frame(self.notebook, padding=10)
+        self.raid_today_tab = ttk.Frame(self.notebook, padding=10)
         self.wcl_profile_tab = ttk.Frame(self.notebook, padding=10)
         self.wcl_report_tab = ttk.Frame(self.notebook, padding=10)
         self.settings_tab = ttk.Frame(self.notebook, padding=10)
 
         self.notebook.add(self.raider_tab, text="Raider.IO кандидат")
+        self.notebook.add(self.raid_today_tab, text="Кого брать сегодня")
         self.notebook.add(self.wcl_profile_tab, text="WCL профиль")
         self.notebook.add(self.wcl_report_tab, text="WCL лог боя")
         self.notebook.add(self.settings_tab, text="Настройки")
@@ -1092,6 +1159,7 @@ class App(tk.Tk):
         self.raider_avatar_bytes = None
 
         self._build_raider_tab()
+        self._build_raid_today_tab()
         self._build_wcl_profile_tab()
         self._build_wcl_report_tab()
         self._build_settings_tab()
@@ -1132,6 +1200,7 @@ class App(tk.Tk):
         self.min_weekly_key_var = tk.StringVar()
         self.raid_difficulty_var = tk.StringVar()
         self.min_raid_bosses_var = tk.StringVar()
+        self.check_mplus_var = tk.BooleanVar(value=True)
 
         fields = [
             ("Регион", self.region_var, 0, 0),
@@ -1155,16 +1224,13 @@ class App(tk.Tk):
         self.target_combo.bind("<<ComboboxSelected>>", lambda _event: self._apply_target_defaults())
 
         ttk.Label(form, text="Мин. ilvl").grid(row=1, column=2, sticky="w", padx=(0, 6), pady=4)
-        ttk.Entry(form, textvariable=self.min_ilvl_var, width=12).grid(row=1, column=3, sticky="ew", padx=(0, 16),
-                                                                       pady=4)
+        ttk.Entry(form, textvariable=self.min_ilvl_var, width=12).grid(row=1, column=3, sticky="ew", padx=(0, 16), pady=4)
 
         ttk.Label(form, text="Мин. M+ score").grid(row=1, column=4, sticky="w", padx=(0, 6), pady=4)
-        ttk.Entry(form, textvariable=self.min_score_var, width=12).grid(row=1, column=5, sticky="ew", padx=(0, 16),
-                                                                        pady=4)
+        ttk.Entry(form, textvariable=self.min_score_var, width=12).grid(row=1, column=5, sticky="ew", padx=(0, 16), pady=4)
 
         ttk.Label(form, text="Мин. ключ недели").grid(row=2, column=0, sticky="w", padx=(0, 6), pady=4)
-        ttk.Entry(form, textvariable=self.min_weekly_key_var, width=12).grid(row=2, column=1, sticky="ew", padx=(0, 16),
-                                                                             pady=4)
+        ttk.Entry(form, textvariable=self.min_weekly_key_var, width=12).grid(row=2, column=1, sticky="ew", padx=(0, 16), pady=4)
 
         ttk.Label(form, text="Сложность рейда").grid(row=2, column=2, sticky="w", padx=(0, 6), pady=4)
         ttk.Combobox(
@@ -1179,14 +1245,19 @@ class App(tk.Tk):
         ttk.Entry(form, textvariable=self.min_raid_bosses_var, width=12).grid(row=2, column=5, sticky="ew",
                                                                               padx=(0, 16), pady=4)
 
+        ttk.Checkbutton(
+            form,
+            text="Проверять Mythic+ прогресс: M+ score, недельный ключ и recent runs",
+            variable=self.check_mplus_var,
+        ).grid(row=3, column=0, columnspan=6, sticky="w", pady=(8, 0))
+
         button_row = ttk.Frame(form)
-        button_row.grid(row=3, column=0, columnspan=6, sticky="ew", pady=(10, 0))
+        button_row.grid(row=4, column=0, columnspan=6, sticky="ew", pady=(10, 0))
 
         self.raider_button = ttk.Button(button_row, text="Проверить через Raider.IO", command=self.run_raiderio)
         self.raider_button.pack(side="left")
 
-        ttk.Button(button_row, text="Очистить вывод", command=lambda: self._set_output(self.raider_output, "")).pack(
-            side="left", padx=(8, 0))
+        ttk.Button(button_row, text="Очистить вывод", command=lambda: self._set_output(self.raider_output, "")).pack(side="left", padx=(8, 0))
 
         for col in range(6):
             form.columnconfigure(col, weight=1)
@@ -1226,6 +1297,80 @@ class App(tk.Tk):
 
         self.raider_output = self._make_output(output_frame)
 
+    def _build_raid_today_tab(self) -> None:
+        self.raid_today_tab.columnconfigure(0, weight=1)
+        self.raid_today_tab.rowconfigure(1, weight=1)
+
+        form = ttk.LabelFrame(self.raid_today_tab, text="Ростер на сегодняшний рейд", padding=10)
+        form.grid(row=0, column=0, sticky="ew")
+        form.columnconfigure(0, weight=1)
+        form.columnconfigure(1, weight=1)
+
+        self.raid_today_default_region_var = tk.StringVar(value="eu")
+        self.raid_today_default_realm_var = tk.StringVar(value="howling-fjord")
+
+        defaults_frame = ttk.Frame(form)
+        defaults_frame.grid(row=0, column=0, columnspan=2, sticky="ew")
+
+        ttk.Label(defaults_frame, text="Регион по умолчанию").pack(side="left", padx=(0, 6))
+        ttk.Entry(defaults_frame, textvariable=self.raid_today_default_region_var, width=10).pack(side="left", padx=(0, 16))
+
+        ttk.Label(defaults_frame, text="Сервер по умолчанию").pack(side="left", padx=(0, 6))
+        ttk.Entry(defaults_frame, textvariable=self.raid_today_default_realm_var, width=24).pack(side="left", padx=(0, 16))
+
+        hint = ttk.Label(
+            form,
+            text=(
+                "Формат: ник;сервер;регион;роль. Можно короче: ник — тогда сервер и регион возьмутся из полей выше. "
+                "Роль необязательна: tank, healer, dps. Требования берутся из вкладки Raider.IO кандидат."
+            ),
+            style="Small.TLabel",
+            wraplength=1000,
+        )
+        hint.grid(row=1, column=0, columnspan=2, sticky="w", pady=(8, 6))
+
+        input_frame = ttk.LabelFrame(form, text="Список игроков", padding=8)
+        input_frame.grid(row=2, column=0, sticky="nsew", padx=(0, 8), pady=(4, 0))
+        input_frame.columnconfigure(0, weight=1)
+        input_frame.rowconfigure(0, weight=1)
+
+        self.raid_today_input = tk.Text(input_frame, wrap="word", font=("Consolas", 10), height=9)
+        self.raid_today_input.grid(row=0, column=0, sticky="nsew")
+
+        example_frame = ttk.LabelFrame(form, text="Пример", padding=8)
+        example_frame.grid(row=2, column=1, sticky="nsew", padx=(8, 0), pady=(4, 0))
+        example_frame.columnconfigure(0, weight=1)
+        example_frame.rowconfigure(0, weight=1)
+
+        example_text = tk.Text(example_frame, wrap="word", font=("Consolas", 9), height=9)
+        example_text.grid(row=0, column=0, sticky="nsew")
+        example_text.insert(
+            "1.0",
+            "Templar;howling-fjord;eu;dps"
+            "Tankone;howling-fjord;eu;tank"
+            "Healcat;howling-fjord;eu;healer"
+            "Magebro",
+        )
+        example_text.configure(state="disabled")
+
+        button_row = ttk.Frame(form)
+        button_row.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+
+        self.raid_today_button = ttk.Button(
+            button_row,
+            text="Собрать состав по Raider.IO",
+            command=self.run_raid_today,
+        )
+        self.raid_today_button.pack(side="left")
+
+        ttk.Button(
+            button_row,
+            text="Очистить вывод",
+            command=lambda: self._set_output(self.raid_today_output, ""),
+        ).pack(side="left", padx=(8, 0))
+
+        self.raid_today_output = self._make_output(self.raid_today_tab)
+
     def _make_avatar_photo(self, image_bytes: bytes, size: tuple[int, int] = (128, 128)):
         if Image is None or ImageTk is None:
             raise RuntimeError("Для отображения аватарок установи Pillow: pip install pillow")
@@ -1259,7 +1404,7 @@ class App(tk.Tk):
 
         if not image_bytes:
             self.raider_avatar_photo = None
-            self.raider_avatar_label.configure(image="", text="Аватаркане найдена")
+            self.raider_avatar_label.configure(image="", text="Аватарка не найдена")
             return
 
         try:
@@ -1270,7 +1415,7 @@ class App(tk.Tk):
             self.raider_avatar_photo = None
             self.raider_avatar_label.configure(
                 image="",
-                text=f"Не удалось показать аватарку: {exc}",
+                text=f"Не удалось показать аватарку:{exc}",
             )
 
     def _build_wcl_profile_tab(self) -> None:
@@ -1283,16 +1428,13 @@ class App(tk.Tk):
         self.wcl_region_var = tk.StringVar()
 
         ttk.Label(form, text="Ник").grid(row=0, column=0, sticky="w", padx=(0, 6), pady=4)
-        ttk.Entry(form, textvariable=self.wcl_name_var, width=24).grid(row=0, column=1, sticky="ew", padx=(0, 16),
-                                                                       pady=4)
+        ttk.Entry(form, textvariable=self.wcl_name_var, width=24).grid(row=0, column=1, sticky="ew", padx=(0, 16), pady=4)
 
         ttk.Label(form, text="Сервер slug").grid(row=0, column=2, sticky="w", padx=(0, 6), pady=4)
-        ttk.Entry(form, textvariable=self.wcl_server_slug_var, width=24).grid(row=0, column=3, sticky="ew",
-                                                                              padx=(0, 16), pady=4)
+        ttk.Entry(form, textvariable=self.wcl_server_slug_var, width=24).grid(row=0, column=3, sticky="ew", padx=(0, 16), pady=4)
 
         ttk.Label(form, text="Регион").grid(row=0, column=4, sticky="w", padx=(0, 6), pady=4)
-        ttk.Entry(form, textvariable=self.wcl_region_var, width=10).grid(row=0, column=5, sticky="ew", padx=(0, 16),
-                                                                         pady=4)
+        ttk.Entry(form, textvariable=self.wcl_region_var, width=10).grid(row=0, column=5, sticky="ew", padx=(0, 16), pady=4)
 
         button_row = ttk.Frame(form)
         button_row.grid(row=1, column=0, columnspan=6, sticky="ew", pady=(10, 0))
@@ -1300,8 +1442,7 @@ class App(tk.Tk):
         self.wcl_profile_button = ttk.Button(button_row, text="Проверить WCL профиль", command=self.run_wcl_profile)
         self.wcl_profile_button.pack(side="left")
 
-        ttk.Button(button_row, text="Очистить вывод",
-                   command=lambda: self._set_output(self.wcl_profile_output, "")).pack(side="left", padx=(8, 0))
+        ttk.Button(button_row, text="Очистить вывод", command=lambda: self._set_output(self.wcl_profile_output, "")).pack(side="left", padx=(8, 0))
 
         for col in range(6):
             form.columnconfigure(col, weight=1)
@@ -1318,16 +1459,13 @@ class App(tk.Tk):
         self.report_fight_id_var = tk.StringVar()
 
         ttk.Label(form, text="Report code").grid(row=0, column=0, sticky="w", padx=(0, 6), pady=4)
-        ttk.Entry(form, textvariable=self.report_code_var, width=36).grid(row=0, column=1, sticky="ew", padx=(0, 16),
-                                                                          pady=4)
+        ttk.Entry(form, textvariable=self.report_code_var, width=36).grid(row=0, column=1, sticky="ew", padx=(0, 16), pady=4)
 
         ttk.Label(form, text="Игрок").grid(row=0, column=2, sticky="w", padx=(0, 6), pady=4)
-        ttk.Entry(form, textvariable=self.report_player_var, width=24).grid(row=0, column=3, sticky="ew", padx=(0, 16),
-                                                                            pady=4)
+        ttk.Entry(form, textvariable=self.report_player_var, width=24).grid(row=0, column=3, sticky="ew", padx=(0, 16), pady=4)
 
         ttk.Label(form, text="Fight ID, если нужен").grid(row=0, column=4, sticky="w", padx=(0, 6), pady=4)
-        ttk.Entry(form, textvariable=self.report_fight_id_var, width=12).grid(row=0, column=5, sticky="ew",
-                                                                              padx=(0, 16), pady=4)
+        ttk.Entry(form, textvariable=self.report_fight_id_var, width=12).grid(row=0, column=5, sticky="ew", padx=(0, 16), pady=4)
 
         button_row = ttk.Frame(form)
         button_row.grid(row=1, column=0, columnspan=6, sticky="ew", pady=(10, 0))
@@ -1335,8 +1473,7 @@ class App(tk.Tk):
         self.wcl_report_button = ttk.Button(button_row, text="Разобрать лог", command=self.run_wcl_report)
         self.wcl_report_button.pack(side="left")
 
-        ttk.Button(button_row, text="Очистить вывод",
-                   command=lambda: self._set_output(self.wcl_report_output, "")).pack(side="left", padx=(8, 0))
+        ttk.Button(button_row, text="Очистить вывод", command=lambda: self._set_output(self.wcl_report_output, "")).pack(side="left", padx=(8, 0))
 
         hint = ttk.Label(
             form,
@@ -1401,13 +1538,13 @@ python-dotenv
 
     def _set_default_values(self) -> None:
         self.region_var.set("eu")
-        self.realm_var.set("howling-fjord")
-        self.name_var.set("Templar")
+        self.realm_var.set("гордунни")
+        self.name_var.set("Кипет")
         self.target_var.set("heroic")
         self._apply_target_defaults()
 
-        self.wcl_name_var.set("Templar")
-        self.wcl_server_slug_var.set("howling-fjord")
+        self.wcl_name_var.set("Кипет")
+        self.wcl_server_slug_var.set("Гордунни")
         self.wcl_region_var.set("EU")
 
     def _apply_target_defaults(self) -> None:
@@ -1430,6 +1567,7 @@ python-dotenv
             min_weekly_key=safe_int(self.min_weekly_key_var.get(), defaults.min_weekly_key),
             raid_difficulty=self.raid_difficulty_var.get() or defaults.raid_difficulty,
             min_raid_bosses=safe_int(self.min_raid_bosses_var.get(), defaults.min_raid_bosses),
+            check_mplus=self.check_mplus_var.get(),
         )
 
     def _run_threaded(self, button: ttk.Button, output: tk.Text, worker, on_success=None) -> None:
@@ -1442,7 +1580,7 @@ python-dotenv
                 result = worker()
             except Exception as exc:  # GUI должен показать ошибку, а не упасть
                 success = False
-                result = f"ОШИБКА: {exc}"
+                result = f"ОШИБКА:{exc}"
 
             def finish() -> None:
                 if success and on_success is not None:
@@ -1456,6 +1594,212 @@ python-dotenv
             self.after(0, finish)
 
         threading.Thread(target=task, daemon=True).start()
+
+    def _parse_raid_today_lines(self) -> list[dict[str, str]]:
+        raw_text = self.raid_today_input.get("1.0", "end").strip()
+        if not raw_text:
+            raise ValueError("Вставь список игроков.")
+
+        default_region = self.raid_today_default_region_var.get().strip() or "eu"
+        default_realm = self.raid_today_default_realm_var.get().strip()
+        if not default_realm:
+            raise ValueError("Укажи сервер по умолчанию или сервер в каждой строке.")
+
+        players: list[dict[str, str]] = []
+
+        for line_no, line in enumerate(raw_text.splitlines(), start=1):
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+
+            if ";" in line:
+                parts = [part.strip() for part in line.split(";")]
+            elif "," in line:
+                parts = [part.strip() for part in line.split(",")]
+            else:
+                parts = line.split()
+
+            parts = [part for part in parts if part]
+            if not parts:
+                continue
+
+            name = parts[0]
+            realm = parts[1] if len(parts) >= 2 else default_realm
+            region = parts[2] if len(parts) >= 3 else default_region
+            role = parts[3] if len(parts) >= 4 else ""
+
+            players.append(
+                {
+                    "name": name,
+                    "realm": realm,
+                    "region": region,
+                    "role": role.lower(),
+                    "line_no": str(line_no),
+                }
+            )
+
+        if not players:
+            raise ValueError("Не удалось разобрать список игроков.")
+
+        return players
+
+    def _normalize_role_for_report(self, report: dict[str, Any], manual_role: str = "") -> str:
+        role = (manual_role or report.get("active_spec_role") or "unknown").strip().lower()
+
+        aliases = {
+            "tank": "Танки",
+            "tanks": "Танки",
+            "танк": "Танки",
+            "танки": "Танки",
+            "healer": "Хилы",
+            "heal": "Хилы",
+            "healing": "Хилы",
+            "хил": "Хилы",
+            "хилы": "Хилы",
+            "лекарь": "Хилы",
+            "лекари": "Хилы",
+            "dps": "ДД",
+            "damage": "ДД",
+            "dd": "ДД",
+            "дд": "ДД",
+        }
+
+        return aliases.get(role, "Роль не определена")
+
+    def _format_raid_today_report(self, rows: list[dict[str, Any]], errors: list[str]) -> str:
+        priority = {
+            "ПРИНЯТЬ": 0,
+            "ТЕСТОВЫЙ РЕЙД": 1,
+            "РУЧНАЯ ПРОВЕРКА": 2,
+            "ОТКАЗАТЬ": 3,
+        }
+
+        rows = sorted(
+            rows,
+            key=lambda row: (
+                priority.get(row["verdict"], 99),
+                -row["total_score"],
+                -row["ilvl"],
+                -row["mplus_score"],
+            ),
+        )
+
+        groups = {
+            "Танки": [],
+            "Хилы": [],
+            "ДД": [],
+            "Роль не определена": [],
+        }
+
+        for row in rows:
+            groups.setdefault(row["role_group"], []).append(row)
+
+        recommended = [row for row in rows if row["verdict"] in {"ПРИНЯТЬ", "ТЕСТОВЫЙ РЕЙД"}]
+        manual = [row for row in rows if row["verdict"] == "РУЧНАЯ ПРОВЕРКА"]
+        rejected = [row for row in rows if row["verdict"] == "ОТКАЗАТЬ"]
+
+        lines: list[str] = []
+        lines.append("=" * 80)
+        lines.append("КОГО БРАТЬ В РЕЙД СЕГОДНЯ — ПЕРВИЧНЫЙ ОТБОР")
+        lines.append("=" * 80)
+        lines.append("")
+        lines.append(f"Проверено игроков: {len(rows)}")
+        lines.append(f"Рекомендуются: {len(recommended)}")
+        lines.append(f"Ручная проверка: {len(manual)}")
+        lines.append(f"Не брать по текущим требованиям: {len(rejected)}")
+        lines.append("")
+
+        if recommended:
+            lines.append("БРАТЬ / МОЖНО НА ТЕСТ:")
+            for row in recommended:
+                lines.append(
+                    f"✅ {row['name']} - {row['realm']} [{row['region']}] | "
+                    f"{row['role_group']} | {row['class']} / {row['spec']} | "
+                    f"ilvl {row['ilvl']:.1f} | M+ {row['mplus_score']:.0f} | "
+                    f"рейд {row['raid_kills']} | {row['total_score']}/100 | {row['verdict']}"
+                )
+            lines.append("")
+
+        for group_name in ("Танки", "Хилы", "ДД", "Роль не определена"):
+            group_rows = groups.get(group_name) or []
+            if not group_rows:
+                continue
+
+            lines.append(group_name.upper() + ":")
+            for row in group_rows:
+                marker = "✅" if row["verdict"] == "ПРИНЯТЬ" else "🟡" if row["verdict"] == "ТЕСТОВЫЙ РЕЙД" else "⚠️" if row["verdict"] == "РУЧНАЯ ПРОВЕРКА" else "❌"
+                lines.append(
+                    f"{marker} {row['name']} — {row['verdict']} — "
+                    f"{row['total_score']}/100, ilvl {row['ilvl']:.1f}, M+ {row['mplus_score']:.0f}, "
+                    f"недельный ключ +{row['max_weekly_key']}"
+                )
+            lines.append("")
+
+        if manual:
+            lines.append("РУЧНАЯ ПРОВЕРКА:")
+            for row in manual:
+                lines.append(
+                    f"⚠️ {row['name']} — данных хватает не полностью. "
+                    f"Проверь WarcraftLogs, роль, связь и готовность к механикам."
+                )
+            lines.append("")
+
+        if rejected:
+            lines.append("НЕ БРАТЬ ПО ТЕКУЩИМ ТРЕБОВАНИЯМ:")
+            for row in rejected:
+                lines.append(
+                    f"❌ {row['name']} — {row['total_score']}/100, "
+                    f"ilvl {row['ilvl']:.1f}, M+ {row['mplus_score']:.0f}"
+                )
+            lines.append("")
+
+        if errors:
+            lines.append("ОШИБКИ ПО ОТДЕЛЬНЫМ ИГРОКАМ:")
+            for error in errors:
+                lines.append(f"- {error}")
+            lines.append("")
+
+        lines.append("Важно: это первичный отбор по Raider.IO. Финальный состав лучше добивать по WarcraftLogs, классовому балансу, баффам, опыту на конкретном боссе и голосовой связи.")
+        return "".join(lines)
+
+    def run_raid_today(self) -> None:
+        def worker() -> str:
+            players = self._parse_raid_today_lines()
+            rules = self._build_rules_from_form()
+            rows: list[dict[str, Any]] = []
+            errors: list[str] = []
+
+            for player in players:
+                try:
+                    data = fetch_raiderio_character(player["region"], player["realm"], player["name"])
+                    report = analyze_raiderio_candidate(data, rules)
+                    rows.append(
+                        {
+                            "name": report["name"],
+                            "realm": report["realm"],
+                            "region": report["region"],
+                            "class": report["class"],
+                            "spec": report["active_spec_name"],
+                            "role_group": self._normalize_role_for_report(report, player.get("role", "")),
+                            "ilvl": report["ilvl"],
+                            "mplus_score": report["mplus_score"],
+                            "max_weekly_key": report["max_weekly_key"],
+                            "raid_kills": report["raid_kills"],
+                            "total_score": report["total_score"],
+                            "verdict": report["verdict"],
+                        }
+                    )
+                except Exception as exc:
+                    errors.append(
+                        f"строка {player['line_no']}: {player['name']} - {player['realm']} [{player['region']}] — {exc}"
+                    )
+
+            if not rows and errors:
+                return "Не удалось проверить ни одного игрока." + "".join(errors)
+
+            return self._format_raid_today_report(rows, errors)
+
+        self._run_threaded(self.raid_today_button, self.raid_today_output, worker)
 
     def run_raiderio(self) -> None:
         self._clear_raider_avatar()
