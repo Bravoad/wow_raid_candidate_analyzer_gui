@@ -1,6 +1,10 @@
 .env
 .venv/
+.build-venv/
+.build-packages/
 __pycache__/
 *.pyc
 backend/
 .idea/
+build/
+dist/

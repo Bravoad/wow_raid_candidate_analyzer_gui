@@ -4,11 +4,13 @@ import json
 import os
 import re
 import statistics
+import sys
 import threading
 import time
 import tkinter as tk
 from dataclasses import dataclass
 from io import BytesIO
+from pathlib import Path
 from tkinter import messagebox, ttk
 from typing import Any
 
@@ -26,7 +28,14 @@ except ImportError:  # python-dotenv необязателен, но желате
     load_dotenv = None
 
 
+def get_app_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
 if load_dotenv:
+    load_dotenv(get_app_dir() / ".env")
     load_dotenv()
 
 
